@@ -1,0 +1,95 @@
+{
+  "entities": {
+    "Song": {
+      "title": "Song",
+      "description": "Represents a musical piece in the archive",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "Title of the song" },
+        "artistId": { "type": "string", "description": "Reference to the artist" },
+        "genre": { "type": "string", "enum": ["kalindula", "traditional", "pop_pre_2000", "pop_modern"], "description": "Genre of the music" },
+        "chordsGuitar": { "type": "string", "description": "Guitar chord notation" },
+        "chordsPiano": { "type": "string", "description": "Piano chord notation" },
+        "lyricsOriginal": { "type": "string", "description": "Original lyrics" },
+        "lyricsTranslation": { "type": "string", "description": "English translation" },
+        "sheetMusicUrl": { "type": "string", "format": "uri", "description": "URL to sheet music PDF or image" },
+        "mediaUrl": { "type": "string", "format": "uri", "description": "URL to MP3 or YouTube video" },
+        "mediaType": { "type": "string", "enum": ["audio", "video"], "description": "Type of media" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "createdBy": { "type": "string", "description": "UID of the uploader" }
+      },
+      "required": ["title", "artistId", "genre", "mediaUrl", "createdAt", "createdBy"]
+    },
+    "Artist": {
+      "title": "Artist",
+      "description": "Biographical information about a Zambian artist",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "bio": { "type": "string" },
+        "photoUrl": { "type": "string", "format": "uri" },
+        "genres": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["name", "bio"]
+    },
+    "CurationApp": {
+      "title": "Curation Application",
+      "description": "Request from a user to become a manager or curator",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "email": { "type": "string" },
+        "statement": { "type": "string", "description": "Why they want to curate" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "email", "statement", "status", "createdAt"]
+    },
+    "EducationalContent": {
+      "title": "Educational Content",
+      "description": "Music theory or historical context articles",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "content": { "type": "string", "description": "Markdown content" },
+        "category": { "type": "string", "enum": ["theory", "history", "instruments"] },
+        "order": { "type": "number" }
+      },
+      "required": ["title", "content", "category"]
+    },
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Stored user roles and metadata",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "manager", "curator", "user"] },
+        "displayName": { "type": "string" }
+      },
+      "required": ["email", "role"]
+    }
+  },
+  "firestore": {
+    "/songs/{songId}": {
+      "schema": "Song",
+      "description": "Main song collection"
+    },
+    "/artists/{artistId}": {
+      "schema": "Artist",
+      "description": "Artist biographies"
+    },
+    "/applications/{appId}": {
+      "schema": "CurationApp",
+      "description": "Applications for curation roles"
+    },
+    "/education/{eduId}": {
+      "schema": "EducationalContent",
+      "description": "Learning resources"
+    },
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Internal user permissions"
+    }
+  }
+}

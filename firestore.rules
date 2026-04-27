@@ -1,0 +1,78 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 3. Primitives
+    function isSignedIn() { return request.auth != null; }
+    function isVerified() { return isSignedIn() && request.auth.token.email_verified == true; }
+    function getRole(uid) { return get(/databases/$(database)/documents/users/$(uid)).data.role; }
+    function hasRole(role) { return isVerified() && getRole(request.auth.uid) == role; }
+    function isAdmin() { return hasRole('admin'); }
+    function isManager() { return hasRole('manager'); }
+    function isCurator() { return hasRole('curator'); }
+    function isAuthorizedWriter() { return isAdmin() || isManager() || isCurator(); }
+    
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    // 8 Pillars Integration
+    
+    // USERS
+    match /users/{userId} {
+      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+      // Only admin can change roles
+      allow create: if isVerified() && request.auth.uid == userId && incoming().role == 'user';
+      allow update: if isVerified() && (
+        (request.auth.uid == userId && incoming().diff(existing()).affectedKeys().hasOnly(['displayName'])) ||
+        isAdmin()
+      );
+    }
+
+    // SONGS
+    function isValidSong(data) {
+      return data.title is string && data.title.size() <= 200 &&
+             data.genre in ['kalindula', 'traditional', 'pop_pre_2000', 'pop_modern'] &&
+             data.mediaUrl is string && data.mediaUrl.size() <= 500 &&
+             data.createdAt == request.time &&
+             data.createdBy == request.auth.uid;
+    }
+
+    match /songs/{songId} {
+      allow read: if true;
+      allow create: if isAuthorizedWriter() && isValidSong(incoming()) && exists(/databases/$(database)/documents/artists/$(incoming().artistId));
+      allow update: if isAuthorizedWriter() && isValidSong(incoming()) && (
+        isAdmin() || (existing().createdBy == request.auth.uid)
+      ) && incoming().createdBy == existing().createdBy;
+      allow delete: if isAdmin() || (isAuthorizedWriter() && existing().createdBy == request.auth.uid);
+    }
+
+    // ARTISTS
+    function isValidArtist(data) {
+      return data.name is string && data.name.size() <= 100 &&
+             data.bio is string && data.bio.size() <= 5000;
+    }
+
+    match /artists/{artistId} {
+      allow read: if true;
+      allow create, update, delete: if isAuthorizedWriter() && isValidArtist(incoming());
+    }
+
+    // APPLICATIONS
+    match /applications/{appId} {
+      allow get, create: if isVerified() && incoming().userId == request.auth.uid && incoming().status == 'pending' && incoming().createdAt == request.time;
+      allow list, update: if isAdmin();
+    }
+
+    // EDUCATION
+    match /education/{eduId} {
+      allow read: if true;
+      allow create, update, delete: if isAuthorizedWriter();
+    }
+  }
+}
